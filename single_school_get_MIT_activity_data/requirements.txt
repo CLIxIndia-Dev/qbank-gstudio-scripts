@@ -1,9 +1,12 @@
-beautifulsoup4==4.6.0
-diskcache==3.0.6
-lxml==4.2.1
-pexpect==4.5.0
-pymongo==3.6.1
+# Following are already in gstudio requirements (https://github.com/gnowledge/gstudio/blob/master/requirements.txt)
+#
+# beautifulsoup4==4.6.0
+# diskcache==3.0.6
+# lxml==4.2.1
+# pexpect==4.5.0
+# pymongo==3.6.1
+# pytz==2018.4
+# Newer dependencies:
 python-slugify==1.2.5
-pytz==2018.4
 unicodecsv==0.14.1
 Unidecode==1.0.22
