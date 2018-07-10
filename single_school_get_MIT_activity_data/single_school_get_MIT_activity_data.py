@@ -129,7 +129,7 @@ def activity_details():
 
     # Generate the list of users that have logged in, from the pg_dump_all.sql
     #    file.
-    #  1) Look for "COPY auth_user "
+    #  1) Look for "COPY public.auth_user ("
     #  2) Start reading rows
     #  3) Match all rows where the last_login != date_joined
     #  4) Stop at the first "--" line
@@ -154,8 +154,7 @@ def activity_details():
         activity_in_text_search = 'activity_player'
         # activity_out_text_search = 'course my-desk explore tool-page content'
 
-        MC = MongoClient(host=MONGO_DB_HOST, port=MONGO_DB_PORT)
-        GSTUDIO_DB = MC['gstudio-mongodb']
+        GSTUDIO_DB = gstudio_db()
 
         # This is timing out when there are many records,
         #   so set the `no_cursor_timeout`
@@ -656,8 +655,7 @@ def get_group_name_id(group_name_or_id, get_obj=False):
             return (cache_result[0], ObjectId(cache_result[1]))
     # ---------------------------------
 
-    MC = MongoClient(host=MONGO_DB_HOST, port=MONGO_DB_PORT)
-    GSTUDIO_DB = MC['gstudio-mongodb']
+    GSTUDIO_DB = gstudio_db()
 
     # case-1: argument - "group_name_or_id" is ObjectId
     if ObjectId.is_valid(group_name_or_id):
@@ -710,8 +708,7 @@ def get_group_name_id(group_name_or_id, get_obj=False):
 def get_names_list_from_obj_id_list(obj_ids_list, node_type):
     """ Taken from https://github.com/gnowledge/gstudio/blob/master/gnowsys-ndf/gnowsys_ndf/ndf/models/node.py
     """
-    MC = MongoClient(host=MONGO_DB_HOST, port=MONGO_DB_PORT)
-    GSTUDIO_DB = MC['gstudio-mongodb']
+    GSTUDIO_DB = gstudio_db()
     obj_ids_list = map(ObjectId, obj_ids_list)
     nodes_cur = GSTUDIO_DB['Nodes'].find(
         {
@@ -739,11 +736,14 @@ def generate_user_list(full_list=False):
     does not necessarily use the postgres logins now. I was getting different
     results for active users from Nodes versus Postgres.
 
+    Still use this method to get the full list, because we use that
+    to match user IDs and usernames (for tool logs).
+
     =========================================================
 
     Generate the list of users that have logged in, from the pg_dump_all.sql
        file.
-     1) Look for "COPY auth_user "
+     1) Look for "COPY public.auth_user ("
      2) Start reading rows
      3) Match all rows where the last_login != date_joined
         - Rows are tab delimited
@@ -753,8 +753,17 @@ def generate_user_list(full_list=False):
 
     Return a list of tuples [(username, userID)]
     """
-    postgres_dump = os.path.join(OUTPUT_DIR, 'qbank', 'pg_dump_all.sql')
     user_list = []
+    active_user_ids = []
+
+    if not full_list:
+        # Use the new gstudio method to query counter_collections
+        # But use the postgres dump file to match to usernames instead
+        #       of relying on the Author collection.
+        GSTUDIO_DB = gstudio_db()
+        active_user_ids = GSTUDIO_DB['Counters'].find().distinct('user_id')
+
+    postgres_dump = os.path.join(OUTPUT_DIR, 'qbank', 'pg_dump_all.sql')
     with open(postgres_dump, 'r') as postgres_file:
         start_reading = False
         for row in postgres_file.readlines():
@@ -762,12 +771,13 @@ def generate_user_list(full_list=False):
                 # delimiter for end of the COPY block
                 break
             if start_reading:
-                last_login = grab_last_login(row)
-                date_joined = grab_date_joined(row)
-                if last_login != date_joined or full_list:
+                # last_login = grab_last_login(row)
+                # date_joined = grab_date_joined(row)
+                user_id = grab_user_id(row)
+                if user_id in active_user_ids or full_list:
                     user_list.append((grab_username(row),
                                       grab_user_id(row)))
-            if row.startswith('COPY auth_user ('):
+            if row.startswith('COPY public.auth_user ('):
                 start_reading = True
 
     print('Found {0} active users at this school'.format(str(len(user_list))))
@@ -816,6 +826,12 @@ def grab_username(row):
 def grab_user_id(row):
     """ return the ID, which should be index 0 """
     return row.split('\t')[0]
+
+
+def gstudio_db():
+    """ get MongoClient instance for gstudio """
+    MC = MongoClient(host=MONGO_DB_HOST, port=MONGO_DB_PORT)
+    return MC['gstudio-mongodb']
 
 
 def headers(blob):
