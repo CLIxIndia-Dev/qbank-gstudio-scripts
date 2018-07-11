@@ -774,7 +774,7 @@ def generate_user_list(full_list=False):
                 # last_login = grab_last_login(row)
                 # date_joined = grab_date_joined(row)
                 user_id = grab_user_id(row)
-                if user_id in active_user_ids or full_list:
+                if int(user_id) in active_user_ids or full_list:
                     user_list.append((grab_username(row),
                                       grab_user_id(row)))
             if row.startswith('COPY public.auth_user ('):
