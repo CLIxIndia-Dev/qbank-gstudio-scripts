@@ -10,5 +10,3 @@ OUTPUT_DIR = '/data'
 # This is some root directory where the tool log files
 #   can be found.
 SYNC_DATA_PATH = '/data'
-
-
