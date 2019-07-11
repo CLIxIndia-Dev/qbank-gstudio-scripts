@@ -164,9 +164,7 @@ def export_qbank_data():
 
         )
 
-        p = pexpect.spawn(command,
-
-                          timeout=60)
+        p = pexpect.spawn(command, timeout=1800)
 
         p.expect('done dumping')
 
